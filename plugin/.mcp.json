@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dtu-learn": {
+      "command": "npx",
+      "args": ["-y", "github:frederikngh/dtu-learn-mcp"]
+    }
+  }
+}

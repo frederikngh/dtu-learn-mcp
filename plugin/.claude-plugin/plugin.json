@@ -1,0 +1,12 @@
+{
+  "name": "dtu-learn",
+  "version": "0.1.0",
+  "description": "Unofficial, read-only access to your DTU Learn (Brightspace) courses: lecture material, slides, assignments, deadlines and announcements. Runs locally; your login never leaves your computer. Not affiliated with DTU.",
+  "author": {
+    "name": "Frederik Naervig"
+  },
+  "homepage": "https://github.com/frederikngh/dtu-learn-mcp",
+  "repository": "https://github.com/frederikngh/dtu-learn-mcp",
+  "license": "MIT",
+  "keywords": ["dtu", "brightspace", "university", "study", "lectures", "assignments"]
+}

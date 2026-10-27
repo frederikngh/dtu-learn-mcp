@@ -1,0 +1,14 @@
+{
+  "name": "dtu-learn",
+  "description": "Unofficial DTU Learn tools for Claude, made by a DTU student",
+  "owner": {
+    "name": "Frederik Naervig"
+  },
+  "plugins": [
+    {
+      "name": "dtu-learn",
+      "source": "./plugin",
+      "description": "Read-only access to your DTU Learn courses: lecture material, slides, assignments, deadlines and announcements. Runs on your own computer."
+    }
+  ]
+}

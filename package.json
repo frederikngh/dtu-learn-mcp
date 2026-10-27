@@ -1,0 +1,54 @@
+{
+  "name": "dtu-learn-mcp",
+  "version": "0.1.0",
+  "description": "Unofficial, read-only MCP server and CLI for DTU Learn (Brightspace). Runs on your own machine; your login never leaves it.",
+  "keywords": [
+    "dtu",
+    "dtu-learn",
+    "brightspace",
+    "d2l",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "codex",
+    "student"
+  ],
+  "license": "MIT",
+  "author": "Frederik Naervig",
+  "homepage": "https://github.com/frederikngh/dtu-learn-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frederikngh/dtu-learn-mcp.git"
+  },
+  "bugs": "https://github.com/frederikngh/dtu-learn-mcp/issues",
+  "mcpName": "io.github.frederikngh/dtu-learn-mcp",
+  "type": "module",
+  "bin": {
+    "dtu-learn-mcp": "dist/cli.js",
+    "dtu-learn": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "PRIVACY.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^6.2.108",
+    "playwright-core": "^1.56.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^6.0.3"
+  }
+}
