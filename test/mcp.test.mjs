@@ -132,6 +132,14 @@ for (const mode of ["cookie", "bearer"]) {
     const graded = await srv.call("get_assignment", { course: "02450", assignment_id: 11 });
     assert.match(graded.text, /Feedback: See the comments in the file\./);
     assert.match(graded.text, /grp9_assignment_0\.ipynb\s+\[feedbackFileId=90; 4 KB\]/);
+    assert.match(graded.text, /: assignment_0\.ipynb\s+\[submissionFileId=80; 3 KB\]/);
+    const submitted = await srv.call("read_file", { course: "02450", assignment_id: 11, submission_file_id: 80 });
+    assert.match(submitted.text, /Jupyter notebook, 1 cells?/);
+    assert.match(submitted.text, /x = conv\(img, k\)/);
+    assert.ok(fs.existsSync(path.join(home, "files", `02450 Introduction to Machine Learning, ${CURRENT_SEMESTER}`, "submission_assignment_0.ipynb")));
+    const noSuchSubmission = await srv.call("read_file", { course: "02450", assignment_id: 11, submission_file_id: 999 });
+    assert.equal(noSuchSubmission.isError, true);
+    assert.match(noSuchSubmission.text, /No submitted file 999/);
     const feedbackFile = await srv.call("read_file", { course: "02450", assignment_id: 11, feedback_file_id: 90 });
     assert.match(feedbackFile.text, /Jupyter notebook, 2 cells/);
     assert.match(feedbackFile.text, /TA: explain why you chose this kernel/);

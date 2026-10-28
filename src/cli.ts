@@ -33,6 +33,7 @@ Usage (run as "${RUN_COMMAND} <command>"):
   dtu-learn-mcp topic <course> <topicId>
   dtu-learn-mcp file <course> <topicId> [--offset N] [--max N]
   dtu-learn-mcp file <course> --assignment <id> --file <fileId>
+  dtu-learn-mcp file <course> --assignment <id> --submission <submissionFileId>
   dtu-learn-mcp file <course> --assignment <id> --feedback <feedbackFileId>
   dtu-learn-mcp announcements [--course 02450] [--days 14]
 
@@ -107,6 +108,7 @@ async function main(): Promise<void> {
       module: { type: "string" },
       assignment: { type: "string" },
       file: { type: "string" },
+      submission: { type: "string" },
       feedback: { type: "string" },
       offset: { type: "string" },
       max: { type: "string" },
@@ -168,6 +170,7 @@ async function main(): Promise<void> {
         topic_id: b,
         assignment_id: values.assignment,
         file_id: values.file,
+        submission_file_id: values.submission,
         feedback_file_id: values.feedback,
         offset: values.offset,
         max_chars: values.max,

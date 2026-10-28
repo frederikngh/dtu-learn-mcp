@@ -125,9 +125,14 @@ export async function startFakeBrightspace({ mode = "cookie" } = {}) {
           Entity: { Name: "Group 9", EntityId: 342, EntityType: "Group", Active: true },
           Status: 3,
           Feedback: { Files: [{ FileId: 90, FileName: "grp9_assignment_0.ipynb", Size: 4096 }], Links: [], Score: null, Feedback: { Html: "<p>See the comments in the file.</p>" }, IsGraded: true },
-          Submissions: [{ Id: 1, SubmissionDate: inDays(-11), Files: [{ FileId: 80, FileName: "assignment_0.ipynb" }] }],
+          Submissions: [{ Id: 1, SubmissionDate: inDays(-11), Files: [{ FileId: 80, FileName: "assignment_0.ipynb", Size: 3072 }] }],
         },
       ]);
+    }
+    if (p === `/d2l/api/le/${LE}/111111/dropbox/folders/11/submissions/1/files/80`) {
+      const nb = { cells: [{ cell_type: "code", source: "x = conv(img, k)" }] };
+      res.writeHead(200, { "content-type": "d2l/unknowntype", "content-disposition": 'attachment; filename="assignment_0.ipynb"' });
+      return res.end(JSON.stringify(nb));
     }
     // Like DTU Learn: a feedback file is only served through the entity (here the group) that got the feedback.
     if (p.startsWith(`/d2l/api/le/${LE}/111111/dropbox/folders/11/feedback/`)) {

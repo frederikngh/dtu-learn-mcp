@@ -314,7 +314,7 @@ export const tools: Tool[] = [
     name: "get_assignment",
     title: "Assignment details",
     description:
-      "Shows an assignment's full instructions, attached files (with fileIds for read_file), links, rubric names, and the user's own submission status and feedback, including feedback files (with feedbackFileIds for read_file).",
+      "Shows an assignment's full instructions, attached files (with fileIds for read_file), links, rubric names, and the user's own submissions (with submissionFileIds for read_file) and feedback, including feedback files (with feedbackFileIds for read_file).",
     inputSchema: {
       type: "object",
       properties: { course: COURSE_ARG, assignment_id: { type: "number", description: "assignmentId from list_assignments." } },
@@ -345,9 +345,10 @@ export const tools: Tool[] = [
       }
       if (mine) {
         const subs = mine.flatMap((e) => e.Submissions ?? []);
-        lines.push("", subs.length ? `Your submissions: ${subs.length}` : "You have not submitted anything yet.");
+        lines.push("", subs.length ? `Your submissions: ${subs.length} (read files with read_file using assignment_id + submission_file_id)` : "You have not submitted anything yet.");
         for (const s of subs) {
-          lines.push(`- ${fmtDate(s.SubmissionDate)}: ${(s.Files ?? []).map((x) => x.FileName).join(", ") || "(no files)"}`);
+          const files = (s.Files ?? []).map((x) => `${x.FileName}  [submissionFileId=${x.FileId}; ${(x.Size / 1024).toFixed(0)} KB]`);
+          lines.push(`- ${fmtDate(s.SubmissionDate)}: ${files.join(", ") || "(no files)"}`);
         }
         const fb = mine.find((e) => e.Feedback)?.Feedback;
         if (fb && (fb.Score != null || fb.Feedback)) {
@@ -394,7 +395,7 @@ export const tools: Tool[] = [
     name: "read_file",
     title: "Read a course file",
     description:
-      "Downloads a file from DTU Learn to the user's computer and returns its text (PDF, PowerPoint incl. speaker notes, Word, notebooks, code, text). Give either topic_id (course content), assignment_id + file_id (assignment attachment), or assignment_id + feedback_file_id (a file in the user's feedback, e.g. their hand-in with the teacher's comments). Long files are paged: use offset to continue. The saved path is returned so a coding agent can also open the original.",
+      "Downloads a file from DTU Learn to the user's computer and returns its text (PDF, PowerPoint incl. speaker notes, Word, notebooks, code, text). Give either topic_id (course content), assignment_id + file_id (assignment attachment), assignment_id + submission_file_id (a file the user handed in), or assignment_id + feedback_file_id (a file in the user's feedback, e.g. their hand-in with the teacher's comments). Long files are paged: use offset to continue. The saved path is returned so a coding agent can also open the original.",
     inputSchema: {
       type: "object",
       properties: {
@@ -402,6 +403,7 @@ export const tools: Tool[] = [
         topic_id: { type: "number", description: "topicId of a file from get_course_outline." },
         assignment_id: { type: "number", description: "assignmentId, for an assignment attachment." },
         file_id: { type: "number", description: "fileId of the attachment from get_assignment." },
+        submission_file_id: { type: "number", description: "submissionFileId of a handed-in file from get_assignment." },
         feedback_file_id: { type: "number", description: "feedbackFileId of a feedback file from get_assignment." },
         offset: { type: "number", description: "Character offset to start from (default 0)." },
         max_chars: { type: "number", description: `Maximum characters to return (default ${DEFAULT_MAX_CHARS}).` },
@@ -416,16 +418,19 @@ export const tools: Tool[] = [
       const topicId = int(args, "topic_id");
       const assignmentId = int(args, "assignment_id");
       const fileId = int(args, "file_id");
+      const submissionFileId = int(args, "submission_file_id");
       const feedbackFileId = int(args, "feedback_file_id");
       let result: FileResult;
       if (topicId !== undefined) {
         result = await learn.getTopicFile(course, topicId);
       } else if (assignmentId !== undefined && fileId !== undefined) {
         result = await learn.getAssignmentFile(course, assignmentId, fileId);
+      } else if (assignmentId !== undefined && submissionFileId !== undefined) {
+        result = await learn.getSubmissionFile(course, assignmentId, submissionFileId);
       } else if (assignmentId !== undefined && feedbackFileId !== undefined) {
         result = await learn.getFeedbackFile(course, assignmentId, feedbackFileId);
       } else {
-        throw new Error("Give either topic_id, or assignment_id together with file_id or feedback_file_id.");
+        throw new Error("Give either topic_id, or assignment_id together with file_id, submission_file_id or feedback_file_id.");
       }
       return formatFile(result, offset, maxChars);
     },

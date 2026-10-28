@@ -71,7 +71,7 @@ export interface EntityDropbox {
   /** The user, or the group for group hand-ins; feedback files are fetched through it. */
   Entity?: { EntityId: number; EntityType: string; Name?: string };
   Status?: string | number;
-  Submissions?: { Id: number; SubmissionDate: string | null; Files?: { FileName: string }[] }[];
+  Submissions?: { Id: number; SubmissionDate: string | null; Files?: { FileId: number; FileName: string; Size: number }[] }[];
   Feedback?: {
     Score?: number | null;
     Feedback?: { Text?: string; Html?: string } | null;
@@ -318,6 +318,19 @@ export class DtuLearn {
     const filename = bin.filename ?? entry.Feedback!.Files!.find((f) => f.FileId === fileId)!.FileName;
     // Prefixed so a returned copy of a hand-out (same file name) does not overwrite the saved hand-out.
     return this.finishFile(course, `feedback_${filename}`, bin.data, bin.contentType, opts.save ?? true);
+  }
+
+  /** A file the user (or their group) handed in. */
+  async getSubmissionFile(course: Course, folderId: number, fileId: number, opts: { save?: boolean } = {}): Promise<FileResult> {
+    const { mine } = await this.getAssignment(course.id, folderId);
+    const sub = mine?.flatMap((e) => e.Submissions ?? []).find((s) => s.Files?.some((f) => f.FileId === fileId));
+    if (!sub) throw new Error(`No submitted file ${fileId} on assignment ${folderId}. get_assignment lists the submitted files.`);
+    const bin = await this.client.getBinary(
+      await this.client.le(`/${course.id}/dropbox/folders/${folderId}/submissions/${sub.Id}/files/${fileId}`),
+    );
+    const filename = bin.filename ?? sub.Files!.find((f) => f.FileId === fileId)!.FileName;
+    // Prefixed like feedback files, so a hand-in named like the hand-out does not overwrite it.
+    return this.finishFile(course, `submission_${filename}`, bin.data, bin.contentType, opts.save ?? true);
   }
 
   // ---- upcoming / calendar --------------------------------------------------
