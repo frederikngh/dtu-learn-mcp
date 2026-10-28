@@ -6,7 +6,7 @@
  * short-lived API token (the same thing the Brightspace web UI does itself).
  */
 import { BASE_URL, RUN_COMMAND, log } from "./config.js";
-import { silentRefresh } from "./auth.js";
+import { PasswordRejectedError, silentRefresh } from "./auth.js";
 import { cookieHeader, loadSession, saveSession, type Session } from "./session.js";
 
 export class AuthRequiredError extends Error {
@@ -66,6 +66,11 @@ export class DtuLearnClient {
   reloadSession(): void {
     this.session = loadSession();
     this.bearer = null;
+  }
+
+  /** Renews the session without a window, sharing a renewal that is already running. */
+  refresh(): Promise<boolean> {
+    return this.refreshOnce();
   }
 
   // ---- public helpers -----------------------------------------------------
@@ -251,7 +256,16 @@ export class DtuLearnClient {
           this.bearer = null;
           return true;
         }
-        const refreshed = await silentRefresh();
+        let refreshed: Session | null;
+        try {
+          refreshed = await silentRefresh();
+        } catch (err) {
+          if (!(err instanceof PasswordRejectedError)) throw err;
+          throw new AuthRequiredError(
+            `DTU rejected the saved password ("${err.message}"), so it was removed from the Keychain to avoid locking your account. ` +
+              `Run "${RUN_COMMAND} login --save-password" in a terminal to save it again.`,
+          );
+        }
         if (refreshed) {
           this.session = { ...refreshed, authMode: this.session?.authMode };
           this.bearer = null;

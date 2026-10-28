@@ -13,7 +13,7 @@ It works with **Claude Code, Claude Desktop, Codex (CLI and IDE), Cursor** and o
 ## How it works
 
 - **Runs on your own computer.** Your AI app starts it in the background when needed. There is no server in between.
-- **You sign in yourself.** `login` opens a normal browser window with DTU's own sign-in page. Your password and MFA never pass through this tool. Only the resulting DTU Learn session is saved, in `~/.dtu-learn-mcp/`, readable only by you.
+- **You sign in yourself.** `login` opens a normal browser window with DTU's own sign-in page. Your password and MFA never pass through this tool. Only the resulting DTU Learn session is saved, in `~/.dtu-learn-mcp/`, readable only by you. (The one exception is [automatic sign-in](#automatic-sign-in-optional-macos), which you have to turn on yourself.)
 - **Read-only.** It only ever *reads* from DTU Learn. It cannot submit assignments, post, or change anything. Every tool is marked read-only.
 - **Files stay local.** Files you ask about are downloaded to `~/.dtu-learn-mcp/files/` so the assistant can read them.
 
@@ -88,6 +88,23 @@ The ChatGPT **desktop** app may be able to use local MCP servers depending on yo
 
 **Browser and phone apps** (claude.ai, chatgpt.com, mobile) are not supported: they run in the cloud and can't reach a server on your computer.
 
+## Automatic sign-in (optional, macOS)
+
+DTU Learn sessions run out after a while, and DTU's sign-in has no "keep me signed in" option, so now and then the tool asks you to sign in again. If your DTU login has **no MFA step**, you can let the tool sign in by itself instead:
+
+```bash
+npx -y github:frederikngh/dtu-learn-mcp login --save-password
+```
+
+It asks for your DTU username and password in the terminal, checks them on DTU's own sign-in page, and saves them in your **macOS Keychain** (not in a file). From then on, when the session runs out, the hidden browser fills in DTU's sign-in page for you.
+
+- The password is only ever typed into DTU's own sign-in page (`sts.ait.dtu.dk`), at most once a minute.
+- If a sign-in with the saved password doesn't succeed (for example after you change your password, or if DTU adds an MFA step), the tool deletes it immediately instead of retrying, so it can't get your account locked. Run the command again to save the new one.
+- `npx -y github:frederikngh/dtu-learn-mcp forget-password` turns it off again; `logout` also removes it.
+- `status` shows whether automatic sign-in is on.
+
+This is a trade-off: anything that can run commands as your macOS user can read the saved password from the Keychain. Leave it off if that isn't OK for you.
+
 ## Tools
 
 | Tool | What it does |
@@ -117,7 +134,8 @@ npx -y github:frederikngh/dtu-learn-mcp --help
 
 ## Troubleshooting
 
-- **"Not signed in" / "session has expired":** run `npx -y github:frederikngh/dtu-learn-mcp login` again. The tool tries a silent renewal first, so this should be rare.
+- **"Not signed in" / "session has expired":** run `npx -y github:frederikngh/dtu-learn-mcp login` again. The tool tries a silent renewal first, so this should be rare. To stop it happening at all, see [automatic sign-in](#automatic-sign-in-optional-macos).
+- **"DTU rejected the saved password":** you probably changed your DTU password. The old one was removed so it can't lock your account; run `login --save-password` again.
 - **"Could not start a browser":** install Chrome or Edge, or run `npx playwright install chromium`.
 - **"spawn git ENOENT" or similar:** install [Git](https://git-scm.com); `npx` needs it to fetch the tool from GitHub.
 - **Check everything:** `npx -y github:frederikngh/dtu-learn-mcp status`.

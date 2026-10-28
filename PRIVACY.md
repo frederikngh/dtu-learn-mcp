@@ -11,8 +11,9 @@ All data lives in `~/.dtu-learn-mcp/` on your computer:
 | Your DTU Learn session cookies and the page's CSRF token | `session.json` (readable only by your user account) | So the tool can read DTU Learn as you without asking you to sign in every time |
 | A separate browser profile | `browser-profile/` | So an expired DTU Learn session can often be renewed without a new MFA prompt. It contains the cookies from your DTU sign-in, like any browser profile would |
 | Files you asked the assistant to read | `files/` (or `DTU_LEARN_DOWNLOAD_DIR`) | So the text can be extracted and the original can be opened |
+| Only if you ran `login --save-password`: your DTU username and password | The macOS Keychain (item "DTU Learn (dtu-learn-mcp)"), not `~/.dtu-learn-mcp/` | So the tool can sign in again by itself when the session runs out |
 
-Your **password is never seen or stored**: you type it into DTU's own sign-in page in a normal browser window.
+By default your **password is never seen or stored**: you type it into DTU's own sign-in page in a normal browser window. If you turn on automatic sign-in, the saved password is only ever typed into DTU's own sign-in page (`sts.ait.dtu.dk`), in the tool's hidden browser, and it is deleted as soon as a sign-in with it doesn't succeed. `forget-password` or `logout` removes it.
 
 Treat `~/.dtu-learn-mcp/` like a logged-in browser: anyone who can read it can access your DTU Learn account until the session expires. To remove everything, run `npx -y github:frederikngh/dtu-learn-mcp logout --all` and delete the folder.
 

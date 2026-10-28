@@ -3,6 +3,7 @@ import { BASE_URL, DEFAULT_MAX_CHARS, DOWNLOAD_DIR, RUN_COMMAND } from "./config
 import { ACTIVITY_TYPES, courseLabel, DtuLearn, type FileResult, type TocModule } from "./api.js";
 import { interactiveLogin } from "./auth.js";
 import { AuthRequiredError } from "./client.js";
+import { savedUsername } from "./credentials.js";
 import { fmtDate, richText, truncate } from "./text.js";
 
 export type Args = Record<string, unknown>;
@@ -158,7 +159,8 @@ export const tools: Tool[] = [
     description: "Checks whether you are signed in to DTU Learn and shows who you are signed in as. Use this first if other tools report authentication problems.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     async run() {
-      if (!learn.client.hasSession()) {
+      const username = savedUsername();
+      if (!learn.client.hasSession() && !username) {
         return `Not signed in. Run "${RUN_COMMAND} login" in a terminal, or call the login tool.`;
       }
       try {
@@ -168,6 +170,7 @@ export const tools: Tool[] = [
         return [
           `Signed in to ${BASE_URL} as ${me.FirstName} ${me.LastName} (${me.UniqueName}).`,
           `API versions: lp ${v.lp}, le ${v.le}. Auth mode: ${learn.client.authMode}.`,
+          `Automatic sign-in: ${username ? `on (password for ${username} saved in the macOS Keychain)` : "off"}.`,
           `Current courses: ${courses.length}. Downloaded files go to ${DOWNLOAD_DIR}.`,
         ].join("\n");
       } catch (err) {
@@ -180,13 +183,26 @@ export const tools: Tool[] = [
     name: "login",
     title: "Sign in to DTU Learn",
     description:
-      "Opens a browser window on the user's computer where they sign in to DTU Learn themselves (DTU login + MFA). Only call this when other tools say the user is not signed in, and tell the user to look for the browser window. Waits up to 5 minutes.",
+      "Signs in to DTU Learn. Only call this when other tools say the user is not signed in. If the user turned on automatic sign-in (saved password) this happens without a window; otherwise it opens a browser window on the user's computer where they sign in themselves (DTU login + MFA), so tell the user to look for it. Waits up to 5 minutes.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     async run() {
+      // With a saved password, try signing in without a window first.
+      let note = "";
+      if (savedUsername()) {
+        try {
+          if (await learn.client.refresh()) {
+            const me = await learn.client.whoami();
+            return `Signed in as ${me.FirstName} ${me.LastName} with the saved password; no browser window was needed.`;
+          }
+        } catch (err) {
+          if (!(err instanceof AuthRequiredError)) throw err;
+          note = `${err.message}\n`;
+        }
+      }
       await interactiveLogin();
       learn.client.reloadSession();
       const me = await learn.client.whoami();
-      return `Signed in as ${me.FirstName} ${me.LastName}. The session is stored only on this computer.`;
+      return `${note}Signed in as ${me.FirstName} ${me.LastName}. The session is stored only on this computer.`;
     },
   },
   {
