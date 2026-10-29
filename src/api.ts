@@ -1,7 +1,7 @@
 /** DTU Learn concepts (courses, content, assignments, ...) on top of the raw API client. */
 import fs from "node:fs";
 import path from "node:path";
-import { DOWNLOAD_DIR } from "./config.js";
+import { BASE_URL, DOWNLOAD_DIR } from "./config.js";
 import { ApiError, DtuLearnClient } from "./client.js";
 import { extractText, type Extracted } from "./extract.js";
 import { richText, safeFileName } from "./text.js";
@@ -39,6 +39,7 @@ export interface TocModule {
   Modules?: TocModule[];
   Topics?: TocTopic[];
   LastModifiedDate?: string | null;
+  Description?: { Text?: string; Html?: string } | null;
 }
 
 export interface ContentTopic {
@@ -239,6 +240,18 @@ export class DtuLearn {
     const modules = toc.Modules ?? [];
     this.tocCache.set(courseId, { at: Date.now(), modules });
     return modules;
+  }
+
+  /** The text on a module's own page in Content (e.g. a week's plan, readings and exercises). */
+  async getModuleDescription(courseId: number, module: TocModule): Promise<string> {
+    let desc = module.Description;
+    if (!desc) {
+      const m = await this.client.getJson<{ Description?: { Text?: string; Html?: string } | null }>(
+        await this.client.le(`/${courseId}/content/modules/${module.ModuleId}`),
+      );
+      desc = m.Description;
+    }
+    return richText(desc, BASE_URL);
   }
 
   async getTopic(courseId: number, topicId: number): Promise<ContentTopic> {

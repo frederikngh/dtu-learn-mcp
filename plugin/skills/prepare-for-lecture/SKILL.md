@@ -12,6 +12,7 @@ Use the `dtu-learn` tools to find and read the material for one lecture, then gi
 1. **Identify the course.** If the student named a course number (e.g. 02450) or name, use it. If not, call `list_courses` and ask which course, unless only one is plausible.
 2. **Find the lecture.** Call `get_course_outline` for the course.
    - If they named a lecture or week ("lecture 5", "week 6"), call it again with `search` set to that text.
+   - A found module's page text is shown under its title. At DTU it often lists the reading (e.g. book sections), the exercises and the hand-in for that week: use it, and treat it as the authority on what to prepare.
    - If they said "next lecture", look for the first module whose start date is today or later, or the module after the most recent one with unread items. Check `get_upcoming` for that course too. Say which lecture you picked and why.
 3. **Read the material.** For each relevant file topic (slides, notes, exercise sheets, reading lists), call `read_file` with its topicId. Prefer slides and exercise sheets first. Page through long files with `offset` only as far as needed.
    - Links, videos (e.g. Panopto) and external tools cannot be read; list them with their URL from `get_topic` so the student can open them.

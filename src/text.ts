@@ -30,12 +30,13 @@ export function decodeEntities(s: string): string {
   });
 }
 
-/** Turns Brightspace rich-text HTML into readable plain text. */
-export function htmlToText(html: string | null | undefined): string {
+/** Turns Brightspace rich-text HTML into readable plain text. Links starting with "/" are resolved against baseUrl. */
+export function htmlToText(html: string | null | undefined, baseUrl = ""): string {
   if (!html) return "";
   let s = html
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
     .replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href: string, text: string) => {
+      if (baseUrl && href.startsWith("/") && !href.startsWith("//")) href = baseUrl + href;
       const label = text.replace(/<[^>]+>/g, "").trim();
       return label && label !== href ? `${label} (${href})` : href;
     })
@@ -56,9 +57,9 @@ export function htmlToText(html: string | null | undefined): string {
 }
 
 /** Picks the most useful text out of a Brightspace RichText object ({ Text, Html }). */
-export function richText(rt: { Text?: string; Html?: string } | null | undefined): string {
+export function richText(rt: { Text?: string; Html?: string } | null | undefined, baseUrl = ""): string {
   if (!rt) return "";
-  return rt.Html ? htmlToText(rt.Html) : (rt.Text ?? "").trim();
+  return rt.Html ? htmlToText(rt.Html, baseUrl) : (rt.Text ?? "").trim();
 }
 
 export function truncate(s: string, max: number): string {

@@ -97,12 +97,19 @@ export async function startFakeBrightspace({ mode = "cookie" } = {}) {
             ],
           },
           {
-            ModuleId: 15, Title: "Week 15- Recap", SortOrder: 15, Topics: [],
+            // Newer API versions put the module's page text in the TOC; older ones need content/modules/{id}.
+            ModuleId: 15, Title: "Week 15- Recap", SortOrder: 15, Topics: [], Description: { Text: "Recap of the course.", Html: "<p>Recap of the course.</p>" },
             Modules: [
               { ModuleId: 16, Title: "Slides", SortOrder: 1, Modules: [], Topics: [{ TopicId: 504, Title: "02450_Lecture_15", Url: "/content/enforced/111111/02450_Lecture_15.pdf", ActivityType: 1, SortOrder: 1 }] },
             ],
           },
         ],
+      });
+    }
+    if (p === `/d2l/api/le/${LE}/111111/content/modules/10`) {
+      return json(200, {
+        Id: 10, Title: "Week 5", ModuleStartDate: null, ModuleEndDate: null, ModuleDueDate: null, IsHidden: false, IsLocked: false, Structure: [],
+        Description: { Text: "", Html: '<p><strong>Reading:</strong> Chapter 5.3&ndash;5.4.</p><p><strong>Exercises:</strong> 114, 149.</p><p><a href="/content/enforced/111111/uge5.pdf">Warm-up exercises</a></p>' },
       });
     }
     if (p === `/d2l/api/le/${LE}/111111/content/topics/503`) return json(200, { Id: 503, Title: "video123.mp4", TopicType: 11, Url: "d2l:brightspace:content:eu-west-1:abc:video:def/latest", StartDate: null, EndDate: null, DueDate: null, ActivityType: 1 });

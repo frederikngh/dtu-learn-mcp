@@ -103,6 +103,12 @@ for (const mode of ["cookie", "bearer"]) {
     assert.match(searchOne.text, /nothing matching "Lecture 1"/, '"Lecture 1" does not match "Lecture 15"');
     const searchWeek = await srv.call("get_course_outline", { course: "02450", search: "week 5" });
     assert.match(searchWeek.text, /Lecture 5 slides[\s\S]*Panopto recording/, "a matching module is shown whole");
+    assert.match(searchWeek.text, /▸ Week 5 [^\n]*\n\s+Reading: Chapter 5\.3–5\.4\.\n\n\s+Exercises: 114, 149\./, "shows the text on a matching module's page");
+    assert.match(searchWeek.text, new RegExp(`Warm-up exercises \\(${fake.url}/content/enforced/111111/uge5\\.pdf\\)`), "links are made absolute");
+    assert.doesNotMatch(outline.text, /Reading:|Recap of the course/, "the full outline does not fetch module pages");
+    const oneModule = await srv.call("get_course_outline", { course: "02450", module_id: 15 });
+    assert.match(oneModule.text, /▸ Week 15- Recap [^\n]*\n\s+Recap of the course\./, "uses the description already in the TOC");
+    assert.ok(!fake.calls.some((c) => c.endsWith("/content/modules/15")));
 
     const file = await srv.call("read_file", { course: "02450", topic_id: 501 });
     assert.match(file.text, /PowerPoint, 2 slides/);

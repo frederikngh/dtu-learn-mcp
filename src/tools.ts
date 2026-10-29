@@ -45,6 +45,8 @@ function bool(args: Args, key: string): boolean {
   return v === true || v === "true" || v === 1 || v === "1";
 }
 
+const MAX_MODULE_DESCRIPTIONS = 5;
+
 const COURSE_ARG = {
   type: "string",
   description: 'Course: a DTU course number (e.g. "02450"), part of the course name, or the Brightspace org unit id from list_courses.',
@@ -52,13 +54,21 @@ const COURSE_ARG = {
 
 // ---- formatting -------------------------------------------------------------
 
-function formatModule(m: TocModule, depth: number, lines: string[], includeHidden: boolean): void {
+function formatModule(
+  m: TocModule,
+  depth: number,
+  lines: string[],
+  includeHidden: boolean,
+  descriptions: Map<number, string>,
+): void {
   if (m.IsHidden && !includeHidden) return;
   const pad = "  ".repeat(depth);
   const dates = [m.StartDateTime && `from ${fmtDate(m.StartDateTime)}`, m.EndDateTime && `until ${fmtDate(m.EndDateTime)}`]
     .filter(Boolean)
     .join(", ");
   lines.push(`${pad}▸ ${m.Title}  [moduleId=${m.ModuleId}${dates ? `; ${dates}` : ""}]`);
+  const desc = descriptions.get(m.ModuleId);
+  if (desc) lines.push(...desc.split("\n").map((l) => (l ? `${pad}    ${l}` : "")), "");
   const children: ({ t: "m"; m: TocModule } | { t: "t"; x: NonNullable<TocModule["Topics"]>[number] })[] = [
     ...(m.Modules ?? []).map((x) => ({ t: "m" as const, m: x })),
     ...(m.Topics ?? []).map((x) => ({ t: "t" as const, x })),
@@ -66,7 +76,7 @@ function formatModule(m: TocModule, depth: number, lines: string[], includeHidde
   children.sort((a, b) => (a.t === "m" ? a.m.SortOrder : a.x.SortOrder)! - (b.t === "m" ? b.m.SortOrder : b.x.SortOrder)!);
   for (const c of children) {
     if (c.t === "m") {
-      formatModule(c.m, depth + 1, lines, includeHidden);
+      formatModule(c.m, depth + 1, lines, includeHidden, descriptions);
       continue;
     }
     const t = c.x;
@@ -105,15 +115,16 @@ function titleMatcher(search: string): (title: string) => boolean {
   return (title) => re.test(norm(title));
 }
 
-/** Keeps matching modules whole, and the path down to each matching topic or submodule. */
-function filterModules(modules: TocModule[], matches: (title: string) => boolean): TocModule[] {
+/** Keeps matching modules whole (also adding them to `matched`), and the path down to each matching topic or submodule. */
+function filterModules(modules: TocModule[], matches: (title: string) => boolean, matched: TocModule[]): TocModule[] {
   const out: TocModule[] = [];
   for (const m of modules) {
     if (matches(m.Title)) {
       out.push(m);
+      matched.push(m);
       continue;
     }
-    const Modules = filterModules(m.Modules ?? [], matches);
+    const Modules = filterModules(m.Modules ?? [], matches, matched);
     const Topics = (m.Topics ?? []).filter((t) => matches(t.Title));
     if (Modules.length || Topics.length) out.push({ ...m, Modules, Topics });
   }
@@ -229,13 +240,13 @@ export const tools: Tool[] = [
     name: "get_course_outline",
     title: "Course content outline",
     description:
-      "Shows a course's content tree (modules, lecture folders, slides, files, links, quizzes) with topicIds. Use `search` to filter by title (e.g. 'Lecture 5', 'week 6', 'exercise'), or module_id for one folder. Then use read_file with a topicId to read a file.",
+      "Shows a course's content tree (modules, lecture folders, slides, files, links, quizzes) with topicIds. Use `search` to filter by title (e.g. 'Lecture 5', 'week 6', 'uge 8', 'exercise'), or module_id for one folder; then the text on the matching modules' own pages is shown too, which often lists the week's reading, exercises and hand-in, with links. Then use read_file with a topicId to read a file.",
     inputSchema: {
       type: "object",
       properties: {
         course: COURSE_ARG,
         search: { type: "string", description: "Only modules/topics whose title contains this text (ignores case, _ and -)." },
-        module_id: { type: "number", description: "Only show this module and what is inside it." },
+        module_id: { type: "number", description: "Only show this module, the text on its page, and what is inside it." },
         include_hidden: { type: "boolean", description: "Include items marked hidden." },
       },
       required: ["course"],
@@ -246,12 +257,24 @@ export const tools: Tool[] = [
       const search = str(args, "search");
       const moduleId = int(args, "module_id");
       let modules = await learn.getToc(course.id);
-      if (search) modules = filterModules(modules, titleMatcher(search));
+      let focused: TocModule[] = [];
+      if (search) modules = filterModules(modules, titleMatcher(search), focused);
       if (moduleId !== undefined) {
         const m = findModule(modules, moduleId);
         if (!m) return `Module ${moduleId} not found in ${courseLabel(course)}.`;
         modules = [m];
+        focused = [m];
       }
+      const includeHidden = bool(args, "include_hidden");
+      // A broad search can match many modules; their pages are only worth fetching for a handful.
+      focused = focused.filter((m) => includeHidden || !m.IsHidden).slice(0, MAX_MODULE_DESCRIPTIONS);
+      const descriptions = new Map<number, string>();
+      await Promise.all(
+        focused.map(async (m) => {
+          const text = await learn.getModuleDescription(course.id, m).catch(() => "");
+          if (text) descriptions.set(m.ModuleId, text);
+        }),
+      );
       const lines = [`Course: ${courseLabel(course)} [id=${course.id}]`];
       if (!search && moduleId === undefined) {
         const overview = await learn.getOverview(course.id);
@@ -259,7 +282,7 @@ export const tools: Tool[] = [
       }
       lines.push("", "Content:");
       const before = lines.length;
-      for (const m of modules) formatModule(m, 0, lines, bool(args, "include_hidden"));
+      for (const m of modules) formatModule(m, 0, lines, includeHidden, descriptions);
       if (lines.length === before) lines.push(search ? `(nothing matching "${search}")` : "(no content)");
       return lines.join("\n");
     },

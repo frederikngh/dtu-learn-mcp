@@ -110,7 +110,7 @@ This is a trade-off: anything that can run commands as your macOS user can read 
 | Tool | What it does |
 |---|---|
 | `list_courses` | Your current (or past) courses |
-| `get_course_outline` | A course's modules and files, searchable ("lecture 5", "week 6") |
+| `get_course_outline` | A course's modules and files, searchable ("lecture 5", "week 6"), with the text on a found module's page (the week's reading, exercises, hand-in) |
 | `read_file` | Downloads a file and returns its text: PDF, PowerPoint (with speaker notes), Word, notebooks, code |
 | `get_topic` | Details and URL for links, videos (Panopto) and external tools |
 | `get_upcoming` | Deadlines and dated items in the next N days |
