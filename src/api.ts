@@ -1,7 +1,7 @@
 /** DTU Learn concepts (courses, content, assignments, ...) on top of the raw API client. */
 import fs from "node:fs";
 import path from "node:path";
-import { DOWNLOAD_DIR } from "./config.js";
+import { BASE_URL, DOWNLOAD_DIR } from "./config.js";
 import { ApiError, DtuLearnClient } from "./client.js";
 import { extractText, type Extracted } from "./extract.js";
 import { richText, safeFileName } from "./text.js";
@@ -39,6 +39,7 @@ export interface TocModule {
   Modules?: TocModule[];
   Topics?: TocTopic[];
   LastModifiedDate?: string | null;
+  Description?: { Text?: string; Html?: string } | null;
 }
 
 export interface ContentTopic {
@@ -241,6 +242,18 @@ export class DtuLearn {
     return modules;
   }
 
+  /** The text on a module's own page in Content (e.g. a week's plan, readings and exercises). */
+  async getModuleDescription(courseId: number, module: TocModule): Promise<string> {
+    let desc = module.Description;
+    if (!desc) {
+      const m = await this.client.getJson<{ Description?: { Text?: string; Html?: string } | null }>(
+        await this.client.le(`/${courseId}/content/modules/${module.ModuleId}`),
+      );
+      desc = m.Description;
+    }
+    return richText(desc, BASE_URL);
+  }
+
   async getTopic(courseId: number, topicId: number): Promise<ContentTopic> {
     return this.client.getJson(await this.client.le(`/${courseId}/content/topics/${topicId}`));
   }
@@ -269,6 +282,43 @@ export class DtuLearn {
       }
     }
     return this.finishFile(course, filename, bin.data, bin.contentType, opts.save ?? true);
+  }
+
+  /**
+   * A DTU Learn link to a course file, as found in module pages, topic descriptions and instructions: a file path
+   * (/content/enforced/...), a quicklink, or a content topic's page. Only links on DTU Learn itself are followed.
+   */
+  async getLinkedFile(course: Course, link: string, opts: { save?: boolean } = {}): Promise<FileResult> {
+    let url: URL;
+    try {
+      url = new URL(link, BASE_URL);
+    } catch {
+      throw new Error(`Not a valid link: ${link}`);
+    }
+    if (url.origin !== new URL(BASE_URL).origin) {
+      throw new Error(`Only links to files on DTU Learn (${BASE_URL}) can be read; open ${url.href} in a browser instead.`);
+    }
+    // A quicklink redirects to the item it stands for, e.g. a content topic or a file.
+    if (/\/quickLink\/quickLink\.d2l$/i.test(url.pathname)) {
+      const target = await this.client.getRedirect(url.pathname + url.search);
+      if (!target) throw new Error(`The quicklink ${url.href} did not lead to a file.`);
+      url = new URL(target, BASE_URL);
+      if (url.origin !== new URL(BASE_URL).origin) throw new Error(`The quicklink leads outside DTU Learn: ${url.href}`);
+    }
+    const topicId = /\/d2l\/le\/content\/\d+\/viewContent\/(\d+)\//i.exec(url.pathname)?.[1];
+    if (topicId) return this.getTopicFile(course, Number(topicId), opts);
+    if (!url.pathname.startsWith("/content/")) {
+      throw new Error(`${url.href} is not a link to a course file. Open it in a browser instead.`);
+    }
+    // Prefer the API when the file is also a topic in the course content.
+    const filePath = safeDecode(url.pathname);
+    const topic = findTopic(await this.getToc(course.id), (t) => !!t.Url && safeDecode(t.Url.split("?")[0]) === filePath);
+    if (topic) return this.getTopicFile(course, topic.TopicId, opts);
+    const bin = await this.client.getBinary(url.pathname + url.search);
+    if (/text\/html/i.test(bin.contentType) && !/\.html?$/i.test(filePath)) {
+      throw new Error(`DTU Learn answered ${url.href} with a web page instead of the file. Open it in a browser instead.`);
+    }
+    return this.finishFile(course, bin.filename ?? (path.basename(filePath) || "file"), bin.data, bin.contentType, opts.save ?? true);
   }
 
   // ---- assignments ---------------------------------------------------------
@@ -457,6 +507,22 @@ export class DtuLearn {
       extracted = { text: "", kind: `could not extract text: ${(err as Error).message}` };
     }
     return { savedTo, filename, bytes: data.length, extracted };
+  }
+}
+
+function findTopic(modules: TocModule[], match: (t: TocTopic) => boolean): TocTopic | null {
+  for (const m of modules) {
+    const hit = (m.Topics ?? []).find(match) ?? findTopic(m.Modules ?? [], match);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
   }
 }
 

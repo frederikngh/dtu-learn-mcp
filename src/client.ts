@@ -117,6 +117,13 @@ export class DtuLearnClient {
     return { data, contentType, filename: filenameFromDisposition(res.headers.get("content-disposition")) };
   }
 
+  /** Where a redirecting page (e.g. a quicklink) points, without following it. Null if it does not redirect. */
+  async getRedirect(path: string): Promise<string | null> {
+    const res = await this.get(path, true);
+    await res.body?.cancel();
+    return res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+  }
+
   /** Follows Brightspace "ObjectListPage" pagination ({ Objects, Next }). */
   async getObjectListPages<T>(path: string, maxPages = 20): Promise<T[]> {
     const out: T[] = [];
@@ -151,7 +158,7 @@ export class DtuLearnClient {
   // ---- core request logic ------------------------------------------------
 
   /** Read-only by construction: this is the only way the client talks to the API. */
-  private async get(path: string): Promise<Response> {
+  private async get(path: string, allowRedirect = false): Promise<Response> {
     if (!this.session) {
       if (!(await this.refreshOnce())) throw new AuthRequiredError();
     }
@@ -160,9 +167,10 @@ export class DtuLearnClient {
     // Until we know which auth style DTU accepts, a 403 may mean "cookie auth not accepted".
     const unsure = !this.session?.authMode && res.status === 403;
     if (!(await isAuthFailure(res)) && !unsure) {
-      // /versions/ is public, so it says nothing about whether cookie auth works.
-      if (res.ok && !this.session?.authMode && !path.startsWith("/d2l/api/versions")) this.rememberAuthMode("cookie");
-      return this.check(res, path);
+      // /versions/ is public, and web pages (e.g. course files) always take cookies, so neither says how the API works.
+      const api = path.startsWith("/d2l/api/") && !path.startsWith("/d2l/api/versions");
+      if (res.ok && !this.session?.authMode && api) this.rememberAuthMode("cookie");
+      return this.check(res, path, allowRedirect);
     }
 
     // 1) Cookie auth rejected? Try a short-lived bearer token minted from the session.
@@ -170,7 +178,7 @@ export class DtuLearnClient {
       res = await this.send(path, true);
       if (!(await isAuthFailure(res))) {
         this.rememberAuthMode("bearer");
-        return this.check(res, path);
+        return this.check(res, path, allowRedirect);
       }
     }
 
@@ -178,7 +186,7 @@ export class DtuLearnClient {
     if (await this.refreshOnce()) {
       res = await this.send(path);
       if ((await isAuthFailure(res)) && (await this.mintBearer())) res = await this.send(path, true);
-      if (!(await isAuthFailure(res))) return this.check(res, path);
+      if (!(await isAuthFailure(res))) return this.check(res, path, allowRedirect);
     }
     throw new AuthRequiredError(`Your DTU Learn session has expired. Run "${RUN_COMMAND} login" (or use the login tool) to sign in again.`);
   }
@@ -207,8 +215,8 @@ export class DtuLearnClient {
     }
   }
 
-  private async check(res: Response, path: string): Promise<Response> {
-    if (res.ok) return res;
+  private async check(res: Response, path: string, allowRedirect = false): Promise<Response> {
+    if (res.ok || (allowRedirect && res.status >= 300 && res.status < 400)) return res;
     let detail = "";
     try {
       const body = await res.text();
