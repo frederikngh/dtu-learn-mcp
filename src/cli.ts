@@ -35,6 +35,7 @@ Usage (run as "${RUN_COMMAND} <command>"):
   dtu-learn-mcp file <course> --assignment <id> --file <fileId>
   dtu-learn-mcp file <course> --assignment <id> --submission <submissionFileId>
   dtu-learn-mcp file <course> --assignment <id> --feedback <feedbackFileId>
+  dtu-learn-mcp file <course> --url <link to a file on DTU Learn>
   dtu-learn-mcp announcements [--course 02450] [--days 14]
 
   dtu-learn-mcp mcp                   Run the MCP server (what AI apps start automatically)
@@ -108,6 +109,7 @@ async function main(): Promise<void> {
       module: { type: "string" },
       assignment: { type: "string" },
       file: { type: "string" },
+      url: { type: "string" },
       submission: { type: "string" },
       feedback: { type: "string" },
       offset: { type: "string" },
@@ -172,6 +174,7 @@ async function main(): Promise<void> {
         file_id: values.file,
         submission_file_id: values.submission,
         feedback_file_id: values.feedback,
+        url: values.url,
         offset: values.offset,
         max_chars: values.max,
       });

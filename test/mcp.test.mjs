@@ -104,7 +104,7 @@ for (const mode of ["cookie", "bearer"]) {
     const searchWeek = await srv.call("get_course_outline", { course: "02450", search: "week 5" });
     assert.match(searchWeek.text, /Lecture 5 slides[\s\S]*Panopto recording/, "a matching module is shown whole");
     assert.match(searchWeek.text, /▸ Week 5 [^\n]*\n\s+Reading: Chapter 5\.3–5\.4\.\n\n\s+Exercises: 114, 149\./, "shows the text on a matching module's page");
-    assert.match(searchWeek.text, new RegExp(`Warm-up exercises \\(${fake.url}/content/enforced/111111/uge5\\.pdf\\)`), "links are made absolute");
+    assert.match(searchWeek.text, new RegExp(`Warm-up exercises \\(${fake.url}/content/enforced/111111/uge5_warmup\\.pptx\\)`), "links are made absolute");
     assert.doesNotMatch(outline.text, /Reading:|Recap of the course/, "the full outline does not fetch module pages");
     const oneModule = await srv.call("get_course_outline", { course: "02450", module_id: 15 });
     assert.match(oneModule.text, /▸ Week 15- Recap [^\n]*\n\s+Recap of the course\./, "uses the description already in the TOC");
@@ -115,6 +115,20 @@ for (const mode of ["cookie", "bearer"]) {
     assert.match(file.text, /--- Slide 1 ---\nLecture 5: Regularization\nBias & variance/);
     assert.match(file.text, /\[Speaker notes\]\nRemember to mention ridge/);
     assert.ok(fs.existsSync(path.join(home, "files", `02450 Introduction to Machine Learning, ${CURRENT_SEMESTER}`, "lec5.pptx")));
+
+    const linked = await srv.call("read_file", { course: "02450", url: `${fake.url}/content/enforced/111111/uge5_warmup.pptx` });
+    assert.match(linked.text, /File: uge5_warmup\.pptx[\s\S]*Lecture 5: Regularization/, "reads a file linked from a module page");
+    assert.ok(fs.existsSync(path.join(home, "files", `02450 Introduction to Machine Learning, ${CURRENT_SEMESTER}`, "uge5_warmup.pptx")));
+    const callsBefore = fake.calls.length;
+    const linkedTopic = await srv.call("read_file", { course: "02450", url: "/content/enforced/111111/lec5.pptx" });
+    assert.match(linkedTopic.text, /File: lec5\.pptx/);
+    assert.ok(fake.calls.slice(callsBefore).some((c) => c.endsWith("/content/topics/501/file")), "a link to a topic's file goes through the API");
+    const quick = await srv.call("read_file", { course: "02450", url: `${fake.url}/d2l/common/dialogs/quickLink/quickLink.d2l?ou=111111&type=content&rcode=abc` });
+    assert.match(quick.text, /File: lec5\.pptx/, "follows a quicklink to the topic it stands for");
+    const outside = await srv.call("read_file", { course: "02450", url: "https://example.com/secret.pdf" });
+    assert.ok(outside.isError);
+    assert.match(outside.text, /Only links to files on DTU Learn/);
+    assert.ok(!fake.calls.some((c) => c.includes("secret")));
 
     const attachment = await srv.call("read_file", { course: "02450", assignment_id: 7, file_id: 70 });
     assert.match(attachment.text, /spec\.pptx/);

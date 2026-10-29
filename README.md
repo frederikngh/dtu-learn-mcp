@@ -111,7 +111,7 @@ This is a trade-off: anything that can run commands as your macOS user can read 
 |---|---|
 | `list_courses` | Your current (or past) courses |
 | `get_course_outline` | A course's modules and files, searchable ("lecture 5", "week 6"), with the text on a found module's page (the week's reading, exercises, hand-in) |
-| `read_file` | Downloads a file and returns its text: PDF, PowerPoint (with speaker notes), Word, notebooks, code |
+| `read_file` | Downloads a file and returns its text: PDF, PowerPoint (with speaker notes), Word, notebooks, code. Also takes a DTU Learn link to a file, e.g. from a module page |
 | `get_topic` | Details and URL for links, videos (Panopto) and external tools |
 | `get_upcoming` | Deadlines and dated items in the next N days |
 | `list_assignments` / `get_assignment` | Hand-ins with instructions, attachments, your submission status and feedback (your handed-in files and feedback files can be read with `read_file`) |

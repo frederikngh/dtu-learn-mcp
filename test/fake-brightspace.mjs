@@ -62,6 +62,18 @@ export async function startFakeBrightspace({ mode = "cookie" } = {}) {
       ]);
     }
 
+    // Web pages and course files (not the API) always take the session cookie.
+    if (url.pathname === "/content/enforced/111111/uge5_warmup.pptx") {
+      if (!cookieOk) return authRequired();
+      res.writeHead(200, { "content-type": "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+      return res.end(pptx);
+    }
+    if (url.pathname === "/d2l/common/dialogs/quickLink/quickLink.d2l") {
+      if (!cookieOk) return authRequired();
+      res.writeHead(302, { location: `/d2l/le/content/111111/viewContent/501/View` });
+      return res.end();
+    }
+
     const authed = mode === "cookie" ? cookieOk : bearerOk;
     if (!authed) {
       if (mode === "bearer" && cookieOk) return json(403, { title: "Not Authorized" });
@@ -109,7 +121,7 @@ export async function startFakeBrightspace({ mode = "cookie" } = {}) {
     if (p === `/d2l/api/le/${LE}/111111/content/modules/10`) {
       return json(200, {
         Id: 10, Title: "Week 5", ModuleStartDate: null, ModuleEndDate: null, ModuleDueDate: null, IsHidden: false, IsLocked: false, Structure: [],
-        Description: { Text: "", Html: '<p><strong>Reading:</strong> Chapter 5.3&ndash;5.4.</p><p><strong>Exercises:</strong> 114, 149.</p><p><a href="/content/enforced/111111/uge5.pdf">Warm-up exercises</a></p>' },
+        Description: { Text: "", Html: '<p><strong>Reading:</strong> Chapter 5.3&ndash;5.4.</p><p><strong>Exercises:</strong> 114, 149.</p><p><a href="/content/enforced/111111/uge5_warmup.pptx">Warm-up exercises</a></p>' },
       });
     }
     if (p === `/d2l/api/le/${LE}/111111/content/topics/503`) return json(200, { Id: 503, Title: "video123.mp4", TopicType: 11, Url: "d2l:brightspace:content:eu-west-1:abc:video:def/latest", StartDate: null, EndDate: null, DueDate: null, ActivityType: 1 });

@@ -418,7 +418,7 @@ export const tools: Tool[] = [
     name: "read_file",
     title: "Read a course file",
     description:
-      "Downloads a file from DTU Learn to the user's computer and returns its text (PDF, PowerPoint incl. speaker notes, Word, notebooks, code, text). Give either topic_id (course content), assignment_id + file_id (assignment attachment), assignment_id + submission_file_id (a file the user handed in), or assignment_id + feedback_file_id (a file in the user's feedback, e.g. their hand-in with the teacher's comments). Long files are paged: use offset to continue. The saved path is returned so a coding agent can also open the original.",
+      "Downloads a file from DTU Learn to the user's computer and returns its text (PDF, PowerPoint incl. speaker notes, Word, notebooks, code, text). Give either topic_id (course content), assignment_id + file_id (assignment attachment), assignment_id + submission_file_id (a file the user handed in), assignment_id + feedback_file_id (a file in the user's feedback, e.g. their hand-in with the teacher's comments), or url (a DTU Learn link to a file, as shown in module pages, descriptions and instructions, e.g. https://learn.inside.dtu.dk/content/enforced/...). Long files are paged: use offset to continue. The saved path is returned so a coding agent can also open the original.",
     inputSchema: {
       type: "object",
       properties: {
@@ -428,6 +428,7 @@ export const tools: Tool[] = [
         file_id: { type: "number", description: "fileId of the attachment from get_assignment." },
         submission_file_id: { type: "number", description: "submissionFileId of a handed-in file from get_assignment." },
         feedback_file_id: { type: "number", description: "feedbackFileId of a feedback file from get_assignment." },
+        url: { type: "string", description: "A DTU Learn link to a file, e.g. from a module page in get_course_outline." },
         offset: { type: "number", description: "Character offset to start from (default 0)." },
         max_chars: { type: "number", description: `Maximum characters to return (default ${DEFAULT_MAX_CHARS}).` },
       },
@@ -443,6 +444,7 @@ export const tools: Tool[] = [
       const fileId = int(args, "file_id");
       const submissionFileId = int(args, "submission_file_id");
       const feedbackFileId = int(args, "feedback_file_id");
+      const url = str(args, "url");
       let result: FileResult;
       if (topicId !== undefined) {
         result = await learn.getTopicFile(course, topicId);
@@ -452,8 +454,10 @@ export const tools: Tool[] = [
         result = await learn.getSubmissionFile(course, assignmentId, submissionFileId);
       } else if (assignmentId !== undefined && feedbackFileId !== undefined) {
         result = await learn.getFeedbackFile(course, assignmentId, feedbackFileId);
+      } else if (url !== undefined) {
+        result = await learn.getLinkedFile(course, url);
       } else {
-        throw new Error("Give either topic_id, or assignment_id together with file_id, submission_file_id or feedback_file_id.");
+        throw new Error("Give either topic_id, url, or assignment_id together with file_id, submission_file_id or feedback_file_id.");
       }
       return formatFile(result, offset, maxChars);
     },
